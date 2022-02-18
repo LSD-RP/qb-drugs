@@ -86,16 +86,31 @@ local function toFarAway()
 end
 
 local function callPolice(coords)
-    local title = policeMessage[math.random(1, #policeMessage)]
-    local pCoords = GetEntityCoords(PlayerPedId())
-    local s1, s2 = GetStreetNameAtCoord(pCoords.x, pCoords.y, pCoords.z)
+    -- local title = policeMessage[math.random(1, #policeMessage)]
+    -- local pCoords = GetEntityCoords(PlayerPedId())
+    -- local s1, s2 = GetStreetNameAtCoord(pCoords.x, pCoords.y, pCoords.z)
+    -- local street1 = GetStreetNameFromHashKey(s1)
+    -- local street2 = GetStreetNameFromHashKey(s2)
+    -- local streetLabel = street1
+    -- if street2 ~= nil then streetLabel = street1..' '..street2 end
+    -- TriggerServerEvent('police:server:PoliceAlertMessage', title, streetLabel, coords)
+    -- hasTarget = false
+    -- Wait(5000)
+end
+
+function doPoliceAlert()
+    local ped = PlayerPedId()
+    local pos = GetEntityCoords(ped)
+    local s1, s2 = GetStreetNameAtCoord(pos.x, pos.y, pos.z)
     local street1 = GetStreetNameFromHashKey(s1)
     local street2 = GetStreetNameFromHashKey(s2)
     local streetLabel = street1
-    if street2 ~= nil then streetLabel = street1..' '..street2 end
-    TriggerServerEvent('police:server:PoliceAlertMessage', title, streetLabel, coords)
-    hasTarget = false
-    Wait(5000)
+    if street2 ~= nil then
+        streetLabel = streetLabel .. " " .. street2
+    end
+
+    -- TriggerServerEvent('qb-drugs:server:callCops', streetLabel, pos)
+    TriggerServerEvent('police:server:policeAlert', 'Possible drug sales in the area')
 end
 
 local function SellToPed(ped)
@@ -114,11 +129,12 @@ local function SellToPed(ped)
     local getRobbed = math.random(1, 20)
 
     if succesChance <= 7 then
+        print("doesnt want")
         hasTarget = false
         return
-    elseif succesChance >= 19 then
-        callPolice(GetEntityCoords(ped))
-        return
+    -- elseif succesChance >= 15 then
+    --     callPolice(GetEntityCoords(ped))
+    --     return
     end
 
     local drugType = math.random(1, #availableDrugs)
@@ -200,7 +216,10 @@ local function SellToPed(ped)
                     if IsControlJustPressed(0, 38) then
                         TriggerServerEvent('qb-drugs:server:sellCornerDrugs', availableDrugs[drugType].item, bagAmount, randomPrice)
                         hasTarget = false
-
+                        local policeChance = math.random(0,100)
+                        if policeChance <= 25 then
+                            doPoliceAlert()
+                        end
                         loadAnimDict("gestures@f@standing@casual")
                         TaskPlayAnim(PlayerPedId(), "gestures@f@standing@casual", "gesture_point", 3.0, 3.0, -1, 49, 0, 0, 0, 0)
                         Wait(650)
@@ -287,6 +306,7 @@ CreateThread(function()
                 end
                 local closestPed, closestDistance = QBCore.Functions.GetClosestPed(coords, PlayerPeds)
                 if closestDistance < 15.0 and closestPed ~= 0 and not IsPedInAnyVehicle(closestPed) then
+                    print("going to sell")
                     SellToPed(closestPed)
                 end
             end

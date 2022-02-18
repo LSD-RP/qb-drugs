@@ -27,41 +27,68 @@ QBCore.Functions.CreateCallback('qb-drugs:server:RequestConfig', function(source
     cb(Config.Dealers)
 end)
 
-RegisterNetEvent('qb-drugs:server:succesDelivery', function(deliveryData, inTime)
+RegisterNetEvent('qb-drugs:server:succesDelivery', function(deliveryData, inTime, Party)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
+    local PartyMembers = Party
     local curRep = Player.PlayerData.metadata["dealerrep"]
+    local copsOnDuty = 0
+    for k, v in pairs(QBCore.Functions.GetPlayers()) do
+        local Player = QBCore.Functions.GetPlayer(v)
+        if Player ~= nil then
+            if (Player.PlayerData.job.name == "police" and Player.PlayerData.job.onduty) then
+                copsOnDuty = copsOnDuty + 1
+            end
+        end
+    end
 
     if inTime then
         if Player.Functions.GetItemByName('weed_brick') ~= nil and Player.Functions.GetItemByName('weed_brick').amount >=
             deliveryData["amount"] then
             Player.Functions.RemoveItem('weed_brick', deliveryData["amount"])
             local price = 3000
-            if CurrentCops == 1 then
+            if copsOnDuty == 1 then
                 price = 4000
-            elseif CurrentCops == 2 then
+            elseif copsOnDuty == 2 then
                 price = 5000
-            elseif CurrentCops == 3 then
+            elseif copsOnDuty >= 3 then
                 price = 6000
             end
+            local cashAmount = 3000
             if curRep < 10 then
-                Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 8), "dilvery-drugs")
+                cashAmount = deliveryData["amount"] * price / 100 * 8
+                -- Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 8), "dilvery-drugs")
             elseif curRep >= 10 then
-                Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 10), "dilvery-drugs")
+                cashAmount = deliveryData["amount"] * price / 100 * 10
+                -- Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 10), "dilvery-drugs")
             elseif curRep >= 20 then
-                Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 12), "dilvery-drugs")
+                cashAmount = deliveryData["amount"] * price / 100 * 12
+                -- Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 12), "dilvery-drugs")
             elseif curRep >= 30 then
-                Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 15), "dilvery-drugs")
+                cashAmount = deliveryData["amount"] * price / 100 * 15
+                -- Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 15), "dilvery-drugs")
             elseif curRep >= 40 then
-                Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 18), "dilvery-drugs")
+                cashAmount = deliveryData["amount"] * price / 100 * 18
+                -- Player.Functions.AddMoney('cash', (deliveryData["amount"] * price / 100 * 18), "dilvery-drugs")
             end
+            local partySize = #PartyMembers + 1
+            cashAmount = math.ceil(cashAmount / partySize)
+            for q,b in pairs(PartyMembers) do
+                local Member = QBCore.Functions.GetPlayerByCitizenId(b)
+                Member.Functions.AddMoney('cash', cashAmount, "dilvery-drugs")
+            end
+            Player.Functions.AddMoney('cash', cashAmount, "dilvery-drugs")
 
             TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items["weed_brick"], "remove")
             TriggerClientEvent('QBCore:Notify', src, 'The order has been delivered completely', 'success')
 
             SetTimeout(math.random(5000, 10000), function()
                 TriggerClientEvent('qb-drugs:client:sendDeliveryMail', src, 'perfect', deliveryData)
-
+                for q,b in pairs(PartyMembers) do
+                    local Member = QBCore.Functions.GetPlayerByCitizenId(b)
+                    local MemberRep = Member.PlayerData.metadata["dealerrep"]
+                    Member.Functions.SetMetaData('dealerrep', (MemberRep + 1))
+                end
                 Player.Functions.SetMetaData('dealerrep', (curRep + 1))
             end)
         else
@@ -106,6 +133,8 @@ RegisterNetEvent('qb-drugs:server:succesDelivery', function(deliveryData, inTime
 end)
 
 RegisterNetEvent('qb-drugs:server:callCops', function(streetLabel, coords)
+    print("drug alert for cops")
+    print(coords)
     local msg = "A suspicious situation has been located at " .. streetLabel .. ", possibly drug dealing."
     local alertData = {
         title = "Drug Dealing",
@@ -191,28 +220,32 @@ end, "admin")
 
 CreateThread(function()
     Wait(500)
-    local dealers = exports.oxmysql:executeSync('SELECT * FROM dealers', {})
-    if dealers[1] ~= nil then
-        for k, v in pairs(dealers) do
-            local coords = json.decode(v.coords)
-            local time = json.decode(v.time)
-
-            Config.Dealers[v.name] = {
-                ["name"] = v.name,
-                ["coords"] = {
-                    ["x"] = coords.x,
-                    ["y"] = coords.y,
-                    ["z"] = coords.z
-                },
-                ["time"] = {
-                    ["min"] = time.min,
-                    ["max"] = time.max
-                },
-                ["products"] = Config.Products
-            }
+    while true do
+        local dealers = exports.oxmysql:executeSync('SELECT * FROM dealers', {})
+        if dealers[1] ~= nil then
+            for k, v in pairs(dealers) do
+                local coords = json.decode(v.coords)
+                local time = json.decode(v.time)
+    
+                Config.Dealers[v.name] = {
+                    ["name"] = v.name,
+                    ["coords"] = {
+                        ["x"] = coords.x,
+                        ["y"] = coords.y,
+                        ["z"] = coords.z
+                    },
+                    ["time"] = {
+                        ["min"] = time.min,
+                        ["max"] = time.max
+                    },
+                    ["products"] = Config.Products
+                }
+            end
         end
+        TriggerClientEvent('qb-drugs:client:RefreshDealers', -1, Config.Dealers)
+        Wait(60000 * 90)
     end
-    TriggerClientEvent('qb-drugs:client:RefreshDealers', -1, Config.Dealers)
+
 end)
 
 RegisterNetEvent('qb-drugs:server:CreateDealer', function(DealerData)
@@ -246,3 +279,68 @@ end)
 function GetDealers()
     return Config.Dealers
 end
+
+
+QBCore.Commands.Add('joinparty', 'Group up with others to share dealer XP', { name = 'ID', help = 'Player ID'}, false, function(source, args)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    local Leader = QBCore.Functions.GetPlayer(tonumber(args[1]))
+    if Leader ~= nil then
+        if Leader.PlayerData.citizenid ~= Player.PlayerData.citizenid then
+            -- send request 
+                TriggerClientEvent('qb-drugs:client:sendRequestParty', src, Leader)
+        else
+            -- cant join yourself
+            TriggerClientEvent('QBCore:Notify', src, 'You cannot join a party with yourself')
+        end
+    else
+        -- person isnt online
+        TriggerClientEvent('QBCore:Notify', src, 'Player not online')
+    end
+end)
+
+QBCore.Commands.Add('stopparty', 'End your delivery party', {}, false, function(source, args)
+    TriggerClientEvent('qb-drugs:client:endParty', source)
+end)
+
+QBCore.Commands.Add('leaveparty', 'Leave your delivery party', {}, false, function(source, args)
+    TriggerClientEvent('qb-drugs:client:leavePlayerParty', source)
+end)
+
+QBCore.Commands.Add('partystatus', 'Leave your delivery party', {}, false, function(source, args)
+    TriggerClientEvent('qb-drugs:client:printStatus', source)
+end)
+
+QBCore.Commands.Add('rep', 'End your delivery party', {}, false, function(source, args)
+    TriggerClientEvent('qb-drugs:client:checkRep', source)
+end)
+
+RegisterNetEvent('qb-drugs:server:joinedParty')
+AddEventHandler('qb-drugs:server:joinedParty', function(cid)
+    local src = source
+    local Leader = QBCore.Functions.GetPlayer(src)
+    local Member = QBCore.Functions.GetPlayerByCitizenId(cid)
+    local memberSource = Member.PlayerData.source
+    -- notify member that they are in the party
+    TriggerClientEvent('qb-drugs:client:notifyJoined', memberSource, Leader.PlayerData.citizenid)
+end)
+
+RegisterNetEvent('qb-drugs:server:endParticipants')
+AddEventHandler('qb-drugs:server:endParticipants', function(Party)
+    for i,v in pairs(Party) do
+        local Member = QBCore.Functions.GetPlayerByCitizenId(v)
+        local memberSrc = Member.PlayerData.source
+        TriggerClientEvent("qb-drugs:client:leaveParty", memberSrc)
+    end
+end)
+
+RegisterNetEvent('qb-drugs:server:leavePlayerParty')
+AddEventHandler('qb-drugs:server:leavePlayerParty', function(cid)
+    local Player = QBCore.Functions.GetPlayer(source)
+    local pid = Player.PlayerData.citizenid
+    local Leader = QBCore.Functions.GetPlayerByCitizenId(cid)
+    local leaderSource = Leader.PlayerData.source
+    TriggerClientEvent('qb-drugs:client:leftParty', leaderSource, pid)
+end)
+
+

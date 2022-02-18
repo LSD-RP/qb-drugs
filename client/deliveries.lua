@@ -10,6 +10,11 @@ local isHealingPerson = false
 local healAnimDict = "mini@cpr@char_a@cpr_str"
 local healAnim = "cpr_pumpchest"
 
+local Party = {}
+local inParty = false
+local isLeader = false
+local partyLeader = ""
+
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     QBCore.Functions.TriggerCallback('qb-drugs:server:RequestConfig', function(DealerConfig)
         Config.Dealers = DealerConfig
@@ -228,8 +233,25 @@ AddEventHandler('qb-drugs:client:setDealerItems', function(itemData, amount, dea
 end)
 
 function requestDelivery()
+    if inParty and not isLeader then
+        -- only party leader can start missions
+        -- notify and then return
+        QBCore.Functions.Notify("You are not the leader. Only the leader can accept missions")
+        return
+    end
     local location = math.random(1, #Config.DeliveryLocations)
-    local amount = math.random(1, 3)
+    local mData = QBCore.Functions.GetPlayerData()
+    local rep = mData.metadata["dealerrep"]
+    local amount = 1
+    if rep <= 60 then
+        amount = math.random(1,4)
+    end
+    if rep > 60 and rep <= 120 then
+        amount = math.random(3,7)
+    end
+    if rep > 120 then
+        amount = math.random(6,10)
+    end
     local item = randomDeliveryItemOnRep()
     waitingDelivery = {
         ["coords"] = Config.DeliveryLocations[location]["coords"],
@@ -347,7 +369,7 @@ end
 
 function deliverStuff(activeDelivery)
     if deliveryTimeout > 0 then
-        TriggerEvent('animations:client:EmoteCommandStart', {"c"})
+        -- TriggerEvent('animations:client:EmoteCommandStart', {"c"})
         Wait(500)
         TriggerEvent('animations:client:EmoteCommandStart', {"bumbin"})
         checkPedDistance()
@@ -357,13 +379,13 @@ function deliverStuff(activeDelivery)
             disableMouse = false,
             disableCombat = true,
         }, {}, {}, {}, function() -- Done
-            TriggerServerEvent('qb-drugs:server:succesDelivery', activeDelivery, true)
+            TriggerServerEvent('qb-drugs:server:succesDelivery', activeDelivery, true, Party)
         end, function() -- Cancel
             ClearPedTasks(PlayerPedId())
             QBCore.Functions.Notify("Canceled..", "error")
         end)
     else
-        TriggerServerEvent('qb-drugs:server:succesDelivery', activeDelivery, false)
+        TriggerServerEvent('qb-drugs:server:succesDelivery', activeDelivery, false, Party)
     end
     deliveryTimeout = 0
 end
@@ -381,7 +403,8 @@ function checkPedDistance()
 
     if closestDistance < 40 and closestPed ~= 0 then
         local callChance = math.random(1, 100)
-
+        print("checking call chance")
+        print(callChance)
         if callChance < 15 then
             doPoliceAlert()
         end
@@ -389,6 +412,7 @@ function checkPedDistance()
 end
 
 function doPoliceAlert()
+    print("police alert")
     local ped = PlayerPedId()
     local pos = GetEntityCoords(ped)
     local s1, s2 = GetStreetNameAtCoord(pos.x, pos.y, pos.z)
@@ -399,7 +423,8 @@ function doPoliceAlert()
         streetLabel = streetLabel .. " " .. street2
     end
 
-    TriggerServerEvent('qb-drugs:server:callCops', streetLabel, pos)
+    -- TriggerServerEvent('qb-drugs:server:callCops', streetLabel, pos)
+    TriggerServerEvent('police:server:policeAlert', "Possible drug sales in the area")
 end
 
 RegisterNetEvent('qb-drugs:client:robberyCall')
@@ -482,4 +507,135 @@ AddEventHandler('qb-drugs:client:GotoDealer', function(DealerData)
 
     SetEntityCoords(ped, DealerData["coords"]["x"], DealerData["coords"]["y"], DealerData["coords"]["z"])
     QBCore.Functions.Notify('You have been teleported : '.. DealerData["name"] .. ' Good luck!', 'success')
+end)
+
+
+
+RegisterNetEvent('qb-drugs:client:sendRequestParty')
+AddEventHandler('qb-drugs:client:sendRequestParty', function(Leader)
+    if inParty then
+        QBCore.Functions.Notify("You cannot join a party when you are already in one")
+        return
+    end
+    local Player = QBCore.Functions.GetPlayerData()
+    TriggerServerEvent('qb-phone:server:sendNewMailToOffline', Leader.PlayerData.citizenid, {
+        sender = Player.charinfo.firstname .. ' ' .. Player.charinfo.lastname,
+        subject = "Party Request",
+        message = Player.charinfo.firstname .. ' ' .. Player.charinfo.lastname .. " would like to join your party for drug deliveries.",
+        button = {
+            enabled = true,
+            buttonEvent = "qb-drugs:client:acceptJoin",
+            buttonData = Player.citizenid
+        }
+    })
+end)
+
+RegisterNetEvent('qb-drugs:client:acceptJoin')
+AddEventHandler('qb-drugs:client:acceptJoin', function(cid)
+    if inParty == true and isLeader == false then
+        -- cannot join someone who is in a party but not leader
+        QBCore.Functions.Notify("You cannot accept someone when you are not the party leader.", "error")
+    else
+        -- add cid to party 
+        print("adding cid to party")
+        print(cid)
+        table.insert(Party, cid)
+        inParty = true
+        isLeader = true
+        -- register party on for server side
+        QBCore.Functions.Notify("You have accepted this person into your party")
+        TriggerServerEvent('qb-drugs:server:joinedParty', cid)
+        -- set other person's client data to in party
+    end
+end)
+
+RegisterNetEvent('qb-drugs:client:notifyJoined')
+AddEventHandler('qb-drugs:client:notifyJoined', function(leader)
+    inParty = true
+    partyLeader = leader
+    QBCore.Functions.Notify("You have joined the party")
+end)
+
+RegisterNetEvent('qb-drugs:client:endParty')
+AddEventHandler('qb-drugs:client:endParty', function()
+    if not isLeader then
+        QBCore.Functions.Notify("You cannot disband a party when you are not leader")
+        return
+    end
+    QBCore.Functions.Notify("You have disbanded the party")
+    inParty = false
+    isLeader = false
+    partyLeader = ""
+    -- trigger events for members of party
+    TriggerServerEvent("qb-drugs:server:endParticipants", Party)
+    Party = {}
+end)
+
+RegisterNetEvent('qb-drugs:client:leaveParty')
+AddEventHandler('qb-drugs:client:leaveParty', function()
+    inParty = false
+    isLeader = false
+    Party = {}
+    partyLeader = ""
+    QBCore.Functions.Notify("You have been removed from the party")
+end)
+
+RegisterNetEvent("qb-drugs:client:leavePlayerParty")
+AddEventHandler('qb-drugs:client:leavePlayerParty', function()
+    if not inParty then
+        QBCore.Functions.Notify('You are not in a party')
+        return
+    elseif isLeader then
+        QBCore.Functions.Notify('You cannot leave a party when you are leader. Try /stopparty')
+        return
+    end
+    inParty = false
+    isLeader = false
+    Party = {}
+    TriggerServerEvent('qb-drugs:server:leavePlayerParty', partyLeader)
+    QBCore.Functions.Notify("You have left the party")
+    partyLeader = ""
+end)
+
+RegisterNetEvent('qb-drugs:client:leftParty')
+AddEventHandler('qb-drugs:client:leftParty', function(cid)
+    print("a player is leaving your party")
+    print(cid)
+    local newParty = {}
+    for i,v in pairs(Party) do
+        if v ~= cid then
+            table.insert(newParty, v)
+        end
+    end
+    Party = newParty
+    QBCore.Functions.Notify("A player has left your party")
+    -- remove this cid from Party
+    -- notify they left
+end)
+
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+    TriggerServerEvent('qb-drugs:server:endParticipants', Party)
+end)
+
+RegisterNetEvent('qb-drugs:client:printStatus')
+AddEventHandler('qb-drugs:client:printStatus', function()
+    print("party leader")
+    print(partyLeader)
+    print("inParty")
+    print(inParty)
+    print("isLeader")
+    print(isLeader)
+    print("Party members")
+    for i,v in pairs(Party) do
+        print(i)
+        print(v)
+        print("--")
+    end
+end)
+
+RegisterNetEvent('qb-drugs:client:checkRep')
+AddEventHandler('qb-drugs:client:checkRep', function()
+    local PlayerData = QBCore.Functions.GetPlayerData()
+    local rep = PlayerData.metadata["dealerrep"]
+    QBCore.Functions.Notify("Your dealer rep is currently " .. rep)
 end)
