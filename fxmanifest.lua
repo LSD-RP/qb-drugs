@@ -4,7 +4,11 @@ game 'gta5'
 description 'QB-Drugs'
 version '1.0.0'
 
-shared_script 'config.lua'
+shared_scripts {
+    'config.lua',
+    '@qb-core/shared/locale.lua',
+    'locales/en.lua' -- Change this to your preferred language
+}
 
 client_scripts {
     'client/main.lua',
@@ -13,12 +17,9 @@ client_scripts {
 }
 
 server_scripts {
+    '@oxmysql/lib/MySQL.lua',
     'server/deliveries.lua',
     'server/cornerselling.lua'
-}
-
-server_exports {
-    'GetDealers'
 }
 
 lua54 'yes'
