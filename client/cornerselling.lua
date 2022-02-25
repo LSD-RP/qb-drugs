@@ -6,8 +6,8 @@ local stealingPed = nil
 local stealData = {}
 local availableDrugs = {}
 local policeMessage = {
-    Lang:t("info.suspicious_situation"),
-    Lang:t("info.possible_drug_dealing"),
+    "Suspicious situation",
+    "Possible drug dealing",
 }
 
 CurrentCops = 0
@@ -127,7 +127,6 @@ local function SellToPed(ped)
     local getRobbed = math.random(1, 20)
 
     if succesChance <= 7 then
-        print("doesnt want")
         hasTarget = false
         return
     -- elseif succesChance >= 15 then
@@ -303,7 +302,6 @@ CreateThread(function()
                 end
                 local closestPed, closestDistance = QBCore.Functions.GetClosestPed(coords, PlayerPeds)
                 if closestDistance < 15.0 and closestPed ~= 0 and not IsPedInAnyVehicle(closestPed) then
-                    print("going to sell")
                     SellToPed(closestPed)
                 end
             end
@@ -311,6 +309,20 @@ CreateThread(function()
             if startDist > 10 then
                 toFarAway()
             end
+        end
+        Wait(sleep)
+    end
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        sleep = 1000
+        if cornerselling then
+            -- print(startLocation)
+            sleep = 2
+            DrawMarker(25, startLocation.x, startLocation.y, startLocation.z - 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 20.0, 0.5, 77, 181, 50, 0.8, false, false, 2,false, nil, nil, false)
+
+            -- DrawMarker(25, startLocation.x, startLocation.y, startLocation.z, 0,0,0, 0,0,0, 1, 1, 1, 255,255,0,255, false, false, 2, 0,0,0)
         end
         Wait(sleep)
     end
