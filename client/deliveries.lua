@@ -7,6 +7,7 @@ local deliveryTimeout = 0
 local isHealingPerson = false
 local healAnimDict = "mini@cpr@char_a@cpr_str"
 local healAnim = "cpr_pumpchest"
+local CurrentBlip = nil
 
 local Party = {}
 local inParty = false
@@ -287,7 +288,16 @@ function randomDeliveryItemOnRep()
 end
 
 function setMapBlip(x, y)
-    SetNewWaypoint(x, y)
+    -- SetNewWaypoint(x, y)
+    if CurrentBlip ~= nil then
+        RemoveBlip(CurrentBlip)
+        ClearAllBlipRoutes()
+        CurrentBlip = nil
+    end
+    CurrentBlip = AddBlipForCoord(x, y, 1)
+    SetBlipColour(CurrentBlip, 21)
+    SetBlipRoute(CurrentBlip, true)
+    SetBlipRouteColour(CurrentBlip, 21)
     QBCore.Functions.Notify(Lang:t("success.route_has_been_set"), 'success');
 end
 
@@ -360,6 +370,11 @@ function deliverStuff(activeDelivery)
         end)
     else
         TriggerServerEvent('qb-drugs:server:succesDelivery', activeDelivery, false, Party)
+    end
+    if CurrentBlip ~= nil then
+        RemoveBlip(CurrentBlip)
+        ClearAllBlipRoutes()
+        CurrentBlip = nil
     end
     deliveryTimeout = 0
 end

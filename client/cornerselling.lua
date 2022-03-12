@@ -12,6 +12,15 @@ local policeMessage = {
 
 CurrentCops = 0
 
+local function stopSelling()
+    LocalPlayer.state:set("inv_busy", false, true)
+    cornerselling = false
+    hasTarget = false
+    startLocation = nil
+    availableDrugs = {}
+    Wait(1000)
+end
+
 RegisterNetEvent('qb-drugs:client:cornerselling', function(data)
     QBCore.Functions.TriggerCallback('qb-drugs:server:cornerselling:getAvailableDrugs', function(result)
         if CurrentCops >= Config.MinimumDrugSalePolice then
@@ -26,6 +35,7 @@ RegisterNetEvent('qb-drugs:client:cornerselling', function(data)
                     cornerselling = false
                     LocalPlayer.state:set("inv_busy", false, true)
                     QBCore.Functions.Notify(Lang:t("info.stopped_selling_drugs"))
+                    stopSelling()
                 end
             else
                 QBCore.Functions.Notify(Lang:t("error.has_no_drugs"), 'error')
@@ -82,6 +92,8 @@ local function toFarAway()
     availableDrugs = {}
     Wait(5000)
 end
+
+
 
 local function callPolice(coords)
     -- local title = policeMessage[math.random(1, #policeMessage)]
@@ -204,8 +216,10 @@ local function SellToPed(ped)
                 local moveto = GetEntityCoords(PlayerPedId())
                 local movetoCoords = {x = moveto.x + math.random(100, 500), y = moveto.y + math.random(100, 500), z = moveto.z, }
                 ClearPedTasksImmediately(ped)
-                TaskGoStraightToCoord(ped, movetoCoords.x, movetoCoords.y, movetoCoords.z, 15.0, -1, 0.0, 0.0)
+                TaskSmartFleePed(ped, PlayerPedId(), 500.0, -1, true, true)
+                -- TaskGoStraightToCoord(ped, movetoCoords.x, movetoCoords.y, movetoCoords.z, 15.0, -1, 0.0, 0.0)
                 lastPed[#lastPed+1] = ped
+                stopSelling()
                 break
             else
                 if pedDist < 1.5 and cornerselling then
@@ -214,7 +228,7 @@ local function SellToPed(ped)
                         TriggerServerEvent('qb-drugs:server:sellCornerDrugs', availableDrugs[drugType].item, bagAmount, randomPrice)
                         hasTarget = false
                         local policeChance = math.random(0,100)
-                        if policeChance <= 25 then
+                        if policeChance <= 35 then
                             doPoliceAlert()
                         end
                         loadAnimDict("gestures@f@standing@casual")
@@ -232,9 +246,21 @@ local function SellToPed(ped)
                     if IsControlJustPressed(0, 47) then
                         QBCore.Functions.Notify(Lang:t("error.offer_declined"), 'error')
                         hasTarget = false
-                        SetPedKeepTask(ped, false)
-                        SetEntityAsNoLongerNeeded(ped)
-                        ClearPedTasksImmediately(ped)
+                        if math.random(1,100) < 20 then
+                            if math.random(1,100) < 20 then
+                                GiveWeaponToPed(ped, `weapon_pistol`, 1, false, true)
+
+                            else
+                                GiveWeaponToPed(ped, `weapon_knife`, 1, false, true)
+                            end
+                            stopSelling()
+                            TaskPutPedDirectlyIntoMelee(ped, PlayerPedId(), 0.0, -1.0, 0.0, 0)
+                        else
+                            SetPedKeepTask(ped, false)
+                            SetEntityAsNoLongerNeeded(ped)
+                            ClearPedTasksImmediately(ped)
+                        end
+                        
                         lastPed[#lastPed+1] = ped
                         break
                     end
@@ -292,6 +318,9 @@ CreateThread(function()
             sleep = 0
             local player = PlayerPedId()
             local coords = GetEntityCoords(player)
+            if IsPedInAnyVehicle(player) then
+                stopSelling()
+            end
             if not hasTarget then
                 local PlayerPeds = {}
                 if next(PlayerPeds) == nil then
@@ -305,25 +334,27 @@ CreateThread(function()
                     SellToPed(closestPed)
                 end
             end
-            local startDist = #(startLocation - coords)
-            if startDist > 10 then
-                toFarAway()
-            end
+            -- startLocation = GetEntityCoords(PlayerPedId())
+            -- local startDist = #(startLocation - coords)
+            -- if startDist > 10 then
+            --     toFarAway()
+            -- end
         end
         Wait(sleep)
     end
 end)
 
-Citizen.CreateThread(function()
-    while true do
-        sleep = 1000
-        if cornerselling then
-            -- print(startLocation)
-            sleep = 2
-            DrawMarker(25, startLocation.x, startLocation.y, startLocation.z - 0.95, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 20.0, 0.5, 77, 181, 50, 0.8, false, false, 2,false, nil, nil, false)
+-- Citizen.CreateThread(function()
+--     while true do
+--         sleep = 1000
+--         if cornerselling then
+--             -- print(startLocation)
+--             sleep = 2
+--             DrawMarker(25, startLocation.x, startLocation.y, startLocation.z - 0.90, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 20.0, 0.5, 77, 181, 50, 0.8, false, false, 2,false, nil, nil, false)
 
-            -- DrawMarker(25, startLocation.x, startLocation.y, startLocation.z, 0,0,0, 0,0,0, 1, 1, 1, 255,255,0,255, false, false, 2, 0,0,0)
-        end
-        Wait(sleep)
-    end
-end)
+--             -- DrawMarker(25, startLocation.x, startLocation.y, startLocation.z, 0,0,0, 0,0,0, 1, 1, 1, 255,255,0,255, false, false, 2, 0,0,0)
+--             startLocation = GetEntityCoords(PlayerPedId())
+--         end
+--         Wait(sleep)
+--     end
+-- end)

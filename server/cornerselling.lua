@@ -35,6 +35,10 @@ RegisterNetEvent('qb-drugs:server:sellCornerDrugs', function(item, amount, price
             Player.Functions.RemoveItem(item, amount)
             Player.Functions.AddMoney('cash', price, "sold-cornerdrugs")
             TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], "remove")
+            if math.random(1,100) < 25 then
+                local curRep = Player.PlayerData.metadata["dealerrep"]
+                Player.Functions.SetMetaData('dealerrep', (curRep + 1))
+            end
             for i = 1, #Config.CornerSellingDrugsList, 1 do
                 local item = Player.Functions.GetItemByName(Config.CornerSellingDrugsList[i])
 
