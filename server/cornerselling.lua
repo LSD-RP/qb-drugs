@@ -1,5 +1,23 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
+RegisterNetEvent('qb-drugs:server:updateInventory')
+AddEventHandler('qb-drugs:server:updateInventory', function()
+	local src = source
+	local AvailableDrugs = {}
+	local Player = QBCore.Functions.GetPlayer(src)
+	for i = 1, #Config.CornerSellingDrugsList, 1 do
+		item = Player.Functions.GetItemByName(Config.CornerSellingDrugsList[i])
+		if item then
+			AvailableDrugs[#AvailableDrugs+1] = {
+				item = item.name,
+				amount = item.amount,
+				label = QBCore.Shared.Items[item.name]["label"]
+			}
+		end
+	end
+	TriggerClientEvent('qb-drugs:client:refreshAvailableDrugs', src, AvailableDrugs)
+end)
+
 QBCore.Functions.CreateCallback('qb-drugs:server:cornerselling:getAvailableDrugs', function(source, cb)
     local AvailableDrugs = {}
     local src = source
