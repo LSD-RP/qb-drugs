@@ -48,67 +48,85 @@ Config.Products = {
         minrep = 80,
     },
     [6] = {
+        name = "weed_ak47",
+        price = 15,
+        amount = 150,
+        info = {},
+        type = "item",
+        slot = 6,
+        minrep = 100,
+    },
+    [7] = {
         name = "weed_white-widow_seed",
         price = 150,
         amount = 20,
         info = {},
         type = "item",
-        slot = 6,
+        slot = 7,
         minrep = 50,
     },
-    [7] = {
+    [8] = {
         name = "oxy",
         price = 30,
         amount = 150,
         info = {},
         type = "item",
-        slot = 7,
+        slot = 8,
         minrep = 75,
     },
-    [8] = {
+    [9] = {
         name = "weed_skunk_seed",
         price = 175,
         amount = 20,
         info = {},
         type = "item",
-        slot = 8,
+        slot = 9,
         minrep = 100,
     },
-    [9] = {
+    [10] = {
         name = "xtcbaggy",
         price = 40,
         amount = 150,
         info = {},
         type = "item",
-        slot = 9,
+        slot = 10,
         minrep = 110,
     },
-    [10] = {
+    [11] = {
         name = "weed_purple-haze_seed",
         price = 200,
         amount = 20,
         info = {},
         type = "item",
-        slot = 10,
+        slot = 11,
         minrep = 120,
     },
-    [11] = {
+    [12] = {
         name = "weed_og-kush_seed",
         price = 225,
         amount = 20,
         info = {},
         type = "item",
-        slot = 11,
+        slot = 12,
         minrep = 150,
     },
-    [12] = {
+    [13] = {
         name = "weed_amnesia_seed",
         price = 250,
         amount = 20,
         info = {},
         type = "item",
-        slot = 12,
+        slot = 13,
         minrep = 170,
+    },
+    [14] = {
+        name = "weed_ak47_seed",
+        price = 275,
+        amount = 20,
+        info = {},
+        type = "item",
+        slot = 14,
+        minrep = 250,
     },
 
 
@@ -125,7 +143,9 @@ Config.CornerSellingDrugsList = {
     "weed_ak47",
     "crack_baggy",
     "cokebaggy",
-    "meth"
+    "meth",
+    "puremeth",
+    "lsd"
 }
 
 Config.DrugsPrice = {
@@ -133,37 +153,47 @@ Config.DrugsPrice = {
         min = 25,
         max = 50,
     },
-    ["weed_og-kush"] = {
-        min = 30,
-        max = 65,
-    },
+
     ["weed_skunk"] = {
         min = 30,
         max = 65,
     },
-    ["weed_amnesia"] = {
-        min = 30,
-        max = 65,
-    },
+
     ["weed_purple-haze"] = {
-        min = 25,
-        max = 65,
+        min = 35,
+        max = 70,
     },
-    ["weed_ak47"] = {
+    ["weed_og-kush"] = {
         min = 40,
         max = 80,
     },
+    ["weed_amnesia"] = {
+        min = 45,
+        max = 85,
+    },
+    ["weed_ak47"] = {
+        min = 50,
+        max = 100,
+    },
     ["crack_baggy"] = {
-        min = 22,
-        max = 55,
+        min = 100,
+        max = 300,
     },
     ["cokebaggy"] = {
-        min = 45,
-        max = 110,
+        min = 50,
+        max = 200,
     },
     ["meth"] = {
-        min = 25,
-        max = 100,
+        min = 45,
+        max = 150,
+    },
+    ["puremeth"] = {
+        min = 90,
+        max = 300,
+    },
+    ["lsd"] = {
+        min = 100,
+        max = 1000,
     },
 }
 
